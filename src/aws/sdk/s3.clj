@@ -12,12 +12,14 @@
             [clj-time.core :as t]
             [clj-time.coerce :as coerce]
             [clojure.walk :as walk])
-  (:import com.amazonaws.auth.BasicAWSCredentials
+  (:import com.amazonaws.auth.AWSStaticCredentialsProvider
+           com.amazonaws.auth.BasicAWSCredentials
            com.amazonaws.auth.BasicSessionCredentials
            com.amazonaws.services.s3.AmazonS3Client
            com.amazonaws.AmazonServiceException
            com.amazonaws.ClientConfiguration
            com.amazonaws.HttpMethod
+           com.amazonaws.services.s3.AmazonS3ClientBuilder
            com.amazonaws.services.s3.model.AccessControlList
            com.amazonaws.services.s3.model.Bucket
            com.amazonaws.services.s3.model.Grant
@@ -52,36 +54,13 @@
 
 (defn- s3-client*
   [cred]
-  (let [client-configuration (ClientConfiguration.)]
-    (when-let [conn-timeout (:conn-timeout cred)]
-      (.setConnectionTimeout client-configuration conn-timeout))
-    (when-let [socket-timeout (:socket-timeout cred)]
-      (.setSocketTimeout client-configuration socket-timeout))
-    (when-let [max-retries (:max-retries cred)]
-      (.setMaxErrorRetry client-configuration max-retries))
-    (when-let [max-conns (:max-conns cred)]
-      (.setMaxConnections client-configuration max-conns))
-    (when-let [proxy-host (get-in cred [:proxy :host])]
-      (.setProxyHost client-configuration proxy-host))
-    (when-let [proxy-port (get-in cred [:proxy :port])]
-      (.setProxyPort client-configuration proxy-port))
-    (when-let [proxy-user (get-in cred [:proxy :user])]
-      (.setProxyUsername client-configuration proxy-user))
-    (when-let [proxy-pass (get-in cred [:proxy :password])]
-      (.setProxyPassword client-configuration proxy-pass))
-    (when-let [proxy-domain (get-in cred [:proxy :domain])]
-      (.setProxyDomain client-configuration proxy-domain))
-    (when-let [proxy-workstation (get-in cred [:proxy :workstation])]
-      (.setProxyWorkstation client-configuration proxy-workstation))
-    (let [aws-creds
-          (if (:token cred)
-            (BasicSessionCredentials. (:access-key cred) (:secret-key cred) (:token cred))
-            (BasicAWSCredentials. (:access-key cred) (:secret-key cred)))
-
-          client (AmazonS3Client. aws-creds client-configuration)]
-      (when-let [endpoint (:endpoint cred)]
-        (.setEndpoint client endpoint))
-      client)))
+  (.build
+    (.withRegion
+      (.withCredentials
+        (AmazonS3ClientBuilder/standard)
+        (AWSStaticCredentialsProvider.
+          (BasicAWSCredentials. (:access-key cred) (:secret-key cred))))
+      "us-east-1")))
 
 (def ^{:private true :tag AmazonS3Client}
   s3-client
