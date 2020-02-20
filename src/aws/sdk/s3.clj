@@ -22,6 +22,7 @@
            com.amazonaws.services.s3.model.Bucket
            com.amazonaws.services.s3.model.Grant
            com.amazonaws.services.s3.model.CanonicalGrantee
+           com.amazonaws.services.s3.model.CopyObjectRequest
            com.amazonaws.services.s3.model.CopyObjectResult
            com.amazonaws.services.s3.model.EmailAddressGrantee
            com.amazonaws.services.s3.model.GetObjectRequest
@@ -173,7 +174,9 @@
                                            :content-length
                                            :content-md5
                                            :content-type
-                                           :server-side-encryption)))))
+                                           :server-side-encryption
+                                           :last-modified
+                                           :etag)))))
 
 (defn- ^PutObjectRequest ->PutObjectRequest
   "Create a PutObjectRequest instance from a bucket name, key and put request
@@ -392,6 +395,18 @@
    (.getObjectMetadata
     (s3-client cred)
     (map->GetObjectMetadataRequest (merge {:bucket bucket :key key} options)))))
+
+(defn set-object-metadata
+  "Set an object's metadata to the given map."
+  [cred bucket key metadata]
+  (.copyObject
+    (s3-client cred)
+    (.withNewObjectMetadata
+      (CopyObjectRequest. bucket key bucket key)
+      (map->ObjectMetadata
+        (merge
+          (:user metadata)
+          (dissoc metadata :user))))))
 
 (defn- map->ListObjectsRequest
   "Create a ListObjectsRequest instance from a map of values."
