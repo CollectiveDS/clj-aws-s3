@@ -61,7 +61,7 @@
         (AmazonS3ClientBuilder/standard)
         (AWSStaticCredentialsProvider.
           (BasicAWSCredentials. (:access-key cred) (:secret-key cred))))
-      "us-east-1")))
+      (or (:region cred) "us-east-1"))))
 
 (def ^{:private true :tag AmazonS3Client}
   s3-client
