@@ -27,6 +27,7 @@
            com.amazonaws.services.s3.model.CopyObjectRequest
            com.amazonaws.services.s3.model.CopyObjectResult
            com.amazonaws.services.s3.model.EmailAddressGrantee
+           com.amazonaws.services.s3.model.GeneratePresignedUrlRequest
            com.amazonaws.services.s3.model.GetObjectRequest
            com.amazonaws.services.s3.model.GetObjectMetadataRequest
            com.amazonaws.services.s3.model.Grant
@@ -38,6 +39,7 @@
            com.amazonaws.services.s3.model.ObjectListing
            com.amazonaws.services.s3.model.Permission
            com.amazonaws.services.s3.model.PutObjectRequest
+           com.amazonaws.services.s3.model.ResponseHeaderOverrides
            com.amazonaws.services.s3.model.S3Object
            com.amazonaws.services.s3.model.S3ObjectSummary
            com.amazonaws.services.s3.model.S3VersionSummary
@@ -404,15 +406,23 @@
 (defn generate-presigned-url
   "Return a presigned URL for an S3 object. Accepts the following options:
     :expires     - the date at which the URL will expire (defaults to 1 day from now)
-    :http-method - the HTTP method for the URL (defaults to :get)"
+    :http-method - the HTTP method for the URL (defaults to :get)
+    :metadata    - Is a hash-map of metadata to be added. Can be used to modify response presentation 
+   
+   Example for downloading attachment with custom name: :metadata {:content-disposition \"attachment; filename=filename.pdf\"}"
   [cred bucket key & [options]]
+  (when-let [metadata (:metadata options)]
+    (set-object-metadata cred bucket key metadata))
   (.toString
-   (.generatePresignedUrl
+   (->
     (s3-client cred)
-    bucket
-    key
-    (coerce/to-date (:expires options (-> 1 t/days t/from-now)))
-    (http-method (:http-method options :get)))))
+    (.generatePresignedUrl
+     (let [request (GeneratePresignedUrlRequest.
+                    bucket
+                    key
+                    (http-method (:http-method options :get)))]
+       (.setExpiration request (coerce/to-date (:expires options (-> 1 t/days t/from-now))))
+       request)))))
 
 (defn list-objects
   "List the objects in an S3 bucket. A optional map of options may be supplied.
