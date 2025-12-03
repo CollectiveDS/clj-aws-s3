@@ -20,6 +20,7 @@
            com.amazonaws.ClientConfiguration
            com.amazonaws.HttpMethod
            com.amazonaws.services.s3.AmazonS3ClientBuilder
+           com.amazonaws.client.builder.AwsClientBuilder$EndpointConfiguration
            com.amazonaws.services.s3.model.AccessControlList
            com.amazonaws.services.s3.model.Bucket
            com.amazonaws.services.s3.model.Grant
@@ -57,13 +58,19 @@
 
 (defn- s3-client*
   [cred]
-  (.build
-    (.withRegion
-      (.withCredentials
-        (AmazonS3ClientBuilder/standard)
-        (AWSStaticCredentialsProvider.
-          (BasicAWSCredentials. (:access-key cred) (:secret-key cred))))
-      (or (:region cred) "us-east-1"))))
+  (let [builder (-> (AmazonS3ClientBuilder/standard)
+                    (.withCredentials
+                      (AWSStaticCredentialsProvider.
+                        (BasicAWSCredentials. (:access-key cred) (:secret-key cred)))))]
+    (if-let [endpoint (:endpoint cred)]
+      (let [signing-region (or (:signing-region cred) (:region cred) "us-east-1")
+            endpoint-config (AwsClientBuilder$EndpointConfiguration. endpoint signing-region)]
+        (-> builder
+            (.withEndpointConfiguration endpoint-config)
+            (.withPathStyleAccessEnabled true)
+            (.withChunkedEncodingDisabled true)
+            (.build)))
+      (.build (.withRegion builder (or (:region cred) "us-east-1"))))))
 
 (def ^{:private true :tag AmazonS3Client}
   s3-client
